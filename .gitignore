@@ -1,4 +1,5 @@
 /.bundle/
+.obelisk.conf
 /.yardoc
 /Gemfile.lock
 /_yardoc/
