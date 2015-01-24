@@ -33,6 +33,10 @@ task :major, :commit_message do |t, args|
   update(args[:commit_message]){ |sv,i| i == MAJOR ? sv.succ : "0" }
 end
 
+desc "Push to github"
+task :git, :commit_message do |t, args|
+  push_to_git(args[:commit_message])
+end
 
 def update(msg)
   # Update version
@@ -42,14 +46,22 @@ def update(msg)
     f.write up
   end
   puts "Changed version."
-  puts "Removed #{File.delete(*Dir['./*.gem'])} old gems"
+  puts "Removed #{File.delete(*Dir['./*.gem'])} old gems."
+  push_to_git(msg)
+  Dir["./*.gemspec"].each { |spec| puts %x(gem build #{spec}) }
+  Dir["./*.gem"].each { |gem| puts %x(gem push #{gem}) }
+  puts "Removed #{File.delete(*Dir['./*.gem'])} unneeded gems."
+end
+
+def push_to_git(msg)
   # add new files to repo
   %x(git add --all .)
   # commit
-  if msg then %x(git commit -a -m "#{msg}")
-  else %x(git commit -a --reuse-message=HEAD); end
+  if msg 
+    %x(git commit -a -m "#{msg}")
+  else 
+    %x(git commit -a --reuse-message=HEAD)
+  end
   %x(git push)
   puts "Pushed to github."
-  Dir["./*.gemspec"].each { |spec| puts %x(gem build #{spec}) }
-  Dir["./*.gem"].each { |gem| puts %x(gem push #{gem}) }
 end
