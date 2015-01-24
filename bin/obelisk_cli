@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+lib = File.expand_path(File.dirname(__FILE__) + '/../lib')
+$LOAD_PATH.unshift(lib) if File.directory?(lib) && !$LOAD_PATH.include?(lib)
+
+require 'obelisk'
+Obelisk.load_conf
+
+ARGV << "help" if ARGV.empty?
+
+if ARGV.include? "install"
+  Obelisk.save_def_conf
+  puts "Default configuration file's been saved as #{Obelisk::DEFAULT_CONFIG_PATH}. Change it according to your needs."
+  exit
+else
+  ARGV.each do |arg|
+    case arg
+    when "conf"
+      Obelisk.make_erb_conf
+      puts "All files has been generated."
+    when "updb"
+      puts "Not implemented yet"
+    else
+      puts %{Usage: obelisk_cli install
+       obelisk_cli conf [updb]
+Commands:
+install - save default config file for obelisk to #{Obelisk::DEFAULT_CONFIG_PATH}
+conf - generate config files for Asterisk and place it to #{$conf[:asterisk_settings][:config_dir]}
+updb - update Rails database for Asterisk Portal}
+      exit
+    end
+  end
+end
