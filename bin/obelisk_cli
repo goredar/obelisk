@@ -25,8 +25,8 @@ else
        obelisk_cli conf [updb]
 Commands:
 install - save default config file for obelisk to #{Obelisk::DEFAULT_CONFIG_PATH}
-conf - generate config files for Asterisk and place it to #{$conf[:asterisk_settings][:config_dir]}
-updb - update Rails database for Asterisk Portal}
+conf - generate config files for Asterisk and place it to #{$conf[:asterisk_conf_dir]}
+updb - update Rails database for Asterisk Portal [NOT implemented yet]}
       exit
     end
   end
