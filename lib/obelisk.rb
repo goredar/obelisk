@@ -10,42 +10,57 @@ module Obelisk
   DEFAULT_CONFIG_PATH = "#{Dir.home}/.obelisk.conf"
   DEFAULT_CONFIG = {
     :ad_settings => {
-      ldap_host:                "localhost",
-      base_dn:                  "ou=STAFF,dc=CORP,dc=LOCAL",
-      bind_name:                "user",
-      bind_pass:                "pass",
+      ldap_host:                        "localhost",
+      base_dn:                          "ou=STAFF,dc=CORP,dc=LOCAL",
+      bind_name:                        "user",
+      bind_pass:                        "pass",
     },
     :mapping => {
-      samaccountname:           :peer,
-      info:                     :secret,
-      facsimiletelephonenumber: :context,
-      ipphone:                  :extension,
-      pager:                    :callgroup,
+      samaccountname:                   :peer,
+      info:                             :secret,
+      facsimiletelephonenumber:         :context,
+      ipphone:                          :extension,
+      pager:                            :callgroup,
       # Used for AdressBook generation
-      displayname:              :name,
-      mobile:                   :mobile,
-      homephone:                :home,
-      company:                  :company,
-      department:               :department,
-      title:                    :title,
+      displayname:                      :name,
+      mobile:                           :mobile,
+      homephone:                        :home,
+      company:                          :company,
+      department:                       :department,
+      title:                            :title,
     },
     :defaults => {
-      facsimiletelephonenumber: "from-internal"
+      facsimiletelephonenumber:         "from-internal"
     },
-    :asterisk_conf_dir =>       "/tmp/asterisk",
-    :erb_file_dir =>            File.expand_path(File.dirname(__FILE__) + "/../erb")
+    :asterisk_conf_dir =>               "/tmp/asterisk",
+    :asterisk_restart_command =>        %q{asterisk -x "core restart gracefully"},
+    :erb_file_dir =>                    File.expand_path(File.dirname(__FILE__) + "/../erb")
   }
 
   $conf = {}
 
-  def self.make_erb_conf
-    FileUtils.mkdir_p $conf[:asterisk_conf_dir]
+  def self.make_erb_conf(params = {})
+    params[:conf_dir] ||= $conf[:asterisk_conf_dir]
+    params[:force] ||= false
+    params[:restart] ||= false
+    FileUtils.mkdir_p params[:conf_dir]
     b = binding
+    up = false
     users = get_ad_users
     Dir[File.expand_path "*.erb", $conf[:erb_file_dir]].each do |erb|
-      conf_file = File.expand_path File.basename(erb, ".erb"), $conf[:asterisk_conf_dir]
-      File.open(conf_file, "w") { |file| file.write ERB.new(IO.read(erb), nil, "-").result(b) }
+      conf_file = File.expand_path File.basename(erb, ".erb"), params[:conf_dir]
+      File.open(conf_file, File.exists?(conf_file) ? "r+" : "w+") do |file|
+        content = ERB.new(IO.read(erb), nil, "-").result(b)
+        if content != file.read || params[:force]
+          file.seek 0
+          file.truncate 0
+          file.write content
+          up = true
+        end
+      end
     end
+    system $conf[:asterisk_restart_command] if up && params[:restart]
+    up
   end
 
   def self.get_ad_users(ou = nil)
@@ -68,16 +83,21 @@ module Obelisk
     end
   end
 
-  def self.save_def_conf(file_name = DEFAULT_CONFIG_PATH)
+  def self.save_def_conf(file_name = nil)
+    file_name ||= DEFAULT_CONFIG_PATH
     conf = DEFAULT_CONFIG
+    updated = false
     if File.exists? file_name
       merge_proc = proc { |k, o, n| o.is_a?(Hash) && n.is_a?(Hash) ? o.merge(n, &merge_proc) : n }
       conf.merge! YAML.load(IO.read(file_name)), &merge_proc
+      updated = true
     end
     File.open(file_name, 'w') { |f| f.write YAML.dump conf }
+    updated
   end
 
-  def self.load_conf(file_name = DEFAULT_CONFIG_PATH)
+  def self.load_conf(file_name = nil)
+    file_name ||= DEFAULT_CONFIG_PATH
     return unless $conf.empty?
     begin
       $conf = YAML.load IO.read file_name

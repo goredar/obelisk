@@ -3,31 +3,53 @@
 lib = File.expand_path(File.dirname(__FILE__) + '/../lib')
 $LOAD_PATH.unshift(lib) if File.directory?(lib) && !$LOAD_PATH.include?(lib)
 
-require 'obelisk'
-Obelisk.load_conf
+require "optparse"
+require "securerandom"
+require "obelisk"
 
-ARGV << "help" if ARGV.empty?
+options = {}
+VALID_COMMANDS = %w{install generate update}
 
-if ARGV.include? "install"
-  Obelisk.save_def_conf
-  puts "Default configuration file's been saved as #{Obelisk::DEFAULT_CONFIG_PATH}. Change it according to your needs."
-  exit
-else
-  ARGV.each do |arg|
-    case arg
-    when "conf"
-      Obelisk.make_erb_conf
-      puts "All files has been generated."
-    when "updb"
-      puts "Not implemented yet"
-    else
-      puts %{Usage: obelisk_cli install
-       obelisk_cli conf [updb]
+op = OptionParser.new do |opts|
+  opts.banner = 
+%Q{Usage: obelisk_cli [options] command
 Commands:
-install - save default config file for obelisk to #{Obelisk::DEFAULT_CONFIG_PATH}
-conf - generate config files for Asterisk and place it to #{$conf[:asterisk_conf_dir]}
-updb - update Rails database for Asterisk Portal [NOT implemented yet]}
-      exit
+    install             Copy or merge configuration file for Obelisk
+    generate            Generate config files for Asterisk
+    update              Replace config files for Asterisk in case of any change
+Options:}
+  opts.on("-o", "--outdir [DIR]", "Output directory for generated config files") { |dir| options[:dir] = dir }
+  opts.on("-r", "--restart", "Restart Asterisk in case of config change") { options[:restart] = true }
+  opts.on("-c", "--config [FILE]", "Specify config FILE for Obelisk") { |file| options[:config] = file }
+  opts.on_tail("-h", "--help", "Show this message") { puts opts; exit }
+end
+
+op.parse!
+
+ARGV.select! { |arg| VALID_COMMANDS.include? arg }
+(puts op.help; exit 1) if ARGV.empty?
+
+Obelisk.load_conf options[:config]
+$conf[:asterisk_conf_dir] = options[:dir] if options[:dir]
+
+ARGV.each do |arg|
+  case arg
+  when "install"
+    if Obelisk.save_def_conf options[:config]
+      puts "Found and updated config file. Please, check it."
+    else
+      puts "Default configuration file's been saved. Change it accordingly."
     end
+  when "generate"
+    Obelisk.make_erb_conf :force => true, :restart => options[:restart]
+    puts "All files has been generated."
+  when "update"
+    if Obelisk.make_erb_conf(:restart => options[:restart])
+      puts "Asterisk config files have been updated"
+    else
+      puts "Already up to date."
+    end
+  else
+    puts op
   end
 end
