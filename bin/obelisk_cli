@@ -42,10 +42,10 @@ ARGV.each do |arg|
       puts "Default configuration file's been saved. Change it accordingly."
     end
   when "generate"
-    Obelisk.make_erb_conf :force => true, :restart => options[:restart]
+    Obelisk.make_erb_conf options.merge :force => true
     puts "All files has been generated."
   when "update"
-    if Obelisk.make_erb_conf(:restart => options[:restart])
+    if Obelisk.make_erb_conf options
       puts "Asterisk config files have been updated"
     else
       puts "Already up to date."
