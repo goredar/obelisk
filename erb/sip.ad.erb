@@ -2,7 +2,7 @@
 <% users.each do |user| -%>
 
 ; Name: <%= user[:name] %>
-  [<%= user[:peer] %>](ad-user)
+  [<%= user[:login] %>](ad-user)
   secret=<%= user[:secret] %>
   context=<%= user[:context] %>
 <% if user[:callgroup] -%>

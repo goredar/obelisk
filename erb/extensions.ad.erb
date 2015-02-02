@@ -7,9 +7,9 @@
 [<%= current_context %>-ad-users]
 
 <% end -%>
-exten => <%= user[:extension] %>,1,Dial(SIP/<%= user[:peer] %>)
-exten => <%= user[:extension] %>,hint,SIP/<%= user[:peer] %>,CustomPresence:<%= user[:peer] %>
-exten => <%= user[:peer] %>,1,Dial(SIP/<%= user[:peer] %>)
-exten => <%= user[:peer] %>,hint,SIP/<%= user[:peer] %>,CustomPresence:<%= user[:peer] %>
+exten => <%= user[:extension] %>,1,Dial(SIP/<%= user[:login] %>)
+exten => <%= user[:extension] %>,hint,SIP/<%= user[:login] %>,CustomPresence:<%= user[:login] %>
+exten => <%= user[:login] %>,1,Dial(SIP/<%= user[:login] %>)
+exten => <%= user[:login] %>,hint,SIP/<%= user[:login] %>,CustomPresence:<%= user[:login] %>
 
 <% end -%>

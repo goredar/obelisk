@@ -5,6 +5,8 @@ require "yaml"
 require "erb"
 require "logger"
 require "fileutils"
+require "curb"
+require "json"
 
 module Obelisk
   DEFAULT_CONFIG_PATH = "#{Dir.home}/.obelisk.conf"
@@ -16,7 +18,7 @@ module Obelisk
       bind_pass:                        "pass",
     },
     :mapping => {
-      samaccountname:                   :peer,
+      samaccountname:                   :login,
       info:                             :secret,
       facsimiletelephonenumber:         :context,
       ipphone:                          :extension,
@@ -34,6 +36,7 @@ module Obelisk
     },
     :asterisk_conf_dir =>               "/tmp/asterisk",
     :asterisk_restart_command =>        %q{asterisk -x "core restart gracefully"},
+    :obelisk_portal_update_url =>       "http://localhost:3000/contacts/updatedb",
     :erb_file_dir =>                    File.expand_path(File.dirname(__FILE__) + "/../erb")
   }
 
@@ -43,6 +46,7 @@ module Obelisk
     params[:conf_dir] ||= $conf[:asterisk_conf_dir]
     params[:force] ||= false
     params[:restart] ||= false
+    params[:updb] ||= false
     FileUtils.mkdir_p params[:conf_dir]
     b = binding
     up = false
@@ -60,7 +64,16 @@ module Obelisk
       end
     end
     system $conf[:asterisk_restart_command] if up && params[:restart]
+    update_rails_db users if up && params[:updb]
     up
+  end
+
+  def self.update_rails_db(users)
+    users.each { |u| u.delete :secret }
+    c = Curl::Easy.http_post $conf[:obelisk_portal_update_url], JSON.dump(users) do |curl|
+      curl.headers['Accept'] = 'application/json'
+      curl.headers['Content-Type'] = 'application/json'
+    end
   end
 
   def self.get_ad_users(ou = nil)
@@ -78,7 +91,7 @@ module Obelisk
     ActiveDirectory::Base.setup(settings)
     ActiveDirectory::User.find(:all).select{ |u| u.valid_attribute? :info }.map do |u|
       k = $conf[:mapping].values
-      v = $conf[:mapping].keys.map { |attr| u.valid_attribute?(attr) ? u.send(attr) : $conf[:defaults][attr] }
+      v = $conf[:mapping].keys.map { |attr| u.valid_attribute?(attr) ? u.send(attr).force_encoding("UTF-8") : $conf[:defaults][attr] }
       Hash[k.zip v]
     end
   end
