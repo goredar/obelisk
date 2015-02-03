@@ -66,7 +66,7 @@ module Obelisk
       end
     end
     system $conf[:asterisk_restart_command] if up && params[:restart]
-    update_rails_db all_users if up && params[:updb]
+    update_rails_db all_users.reject { |u| u[:name].include? "Test User" } if up && params[:updb]
     up
   end
 
