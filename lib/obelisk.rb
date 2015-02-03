@@ -43,6 +43,7 @@ module Obelisk
   $conf = {}
 
   def self.make_erb_conf(params = {})
+    load_conf
     params[:conf_dir] ||= $conf[:asterisk_conf_dir]
     params[:force] ||= false
     params[:restart] ||= false
@@ -50,7 +51,8 @@ module Obelisk
     FileUtils.mkdir_p params[:conf_dir]
     b = binding
     up = false
-    users = get_ad_users
+    all_users = get_ad_users
+    users = all_users.select{ |u| u[:secret] && u[:extension] }
     Dir[File.expand_path "*.erb", $conf[:erb_file_dir]].each do |erb|
       conf_file = File.expand_path File.basename(erb, ".erb"), params[:conf_dir]
       File.open(conf_file, File.exists?(conf_file) ? "r+" : "w+") do |file|
@@ -64,7 +66,7 @@ module Obelisk
       end
     end
     system $conf[:asterisk_restart_command] if up && params[:restart]
-    update_rails_db users if up && params[:updb]
+    update_rails_db all_users if up && params[:updb]
     up
   end
 
@@ -89,7 +91,7 @@ module Obelisk
       }
     }
     ActiveDirectory::Base.setup(settings)
-    ActiveDirectory::User.find(:all).select{ |u| u.valid_attribute? :info }.map do |u|
+    ActiveDirectory::User.find(:all).map do |u|
       k = $conf[:mapping].values
       v = $conf[:mapping].keys.map { |attr| u.valid_attribute?(attr) ? u.send(attr).force_encoding("UTF-8") : $conf[:defaults][attr] }
       Hash[k.zip v]
