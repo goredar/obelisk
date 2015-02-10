@@ -12,7 +12,7 @@ class ErbTestCase < Test::Unit::TestCase
       assert ! Obelisk.make_erb_conf(:conf_dir => dir)
       assert Obelisk.make_erb_conf :conf_dir => dir, :force => true
       assert ! Obelisk.make_erb_conf(:conf_dir => dir)
-      #puts %x(cat #{dir}/*)
+      puts %x(cat #{dir}/*)
     ensure
       File.delete *Dir[File.expand_path "*", dir]
       Dir.rmdir dir

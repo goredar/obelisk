@@ -19,7 +19,7 @@ module Obelisk
     },
     :mapping => {
       samaccountname:                   :login,
-      info:                             :secret,
+      admindescription:                 :secret,
       facsimiletelephonenumber:         :context,
       ipphone:                          :extension,
       pager:                            :callgroup,
@@ -66,16 +66,8 @@ module Obelisk
       end
     end
     system $conf[:asterisk_restart_command] if up && params[:restart]
-    update_rails_db all_users.reject { |u| u[:name].include? "Test User" } if up && params[:updb]
+    puts("Update database is deprecated") if params[:updb]
     up
-  end
-
-  def self.update_rails_db(users)
-    users.each { |u| u.delete :secret }
-    c = Curl::Easy.http_post $conf[:obelisk_portal_update_url], JSON.dump(users) do |curl|
-      curl.headers['Accept'] = 'application/json'
-      curl.headers['Content-Type'] = 'application/json'
-    end
   end
 
   def self.get_ad_users(ou = nil)
